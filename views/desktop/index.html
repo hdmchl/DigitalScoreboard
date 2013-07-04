@@ -1,0 +1,136 @@
+<html>
+    <head>
+        <title>Digital Scoreboard</title>
+
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        
+        <style>
+            body {
+                -webkit-user-select: none;
+                background-color: #FFF;
+                margin:0;
+                padding:0;
+                font-family: Helvetica;
+            }
+
+            #cursor {
+                width : 50px;
+                height : 50px;
+                background-color : #86d850;
+                position : absolute;
+                -webkit-border-radius : 40px;
+                text-align: center;
+                vertical-align: middle;
+            }
+
+            .score {
+                text-align: center;
+                vertical-align: middle;
+                width:49.5%;
+                font-size: 200px;
+            }
+
+            #left_score {
+                color:red;
+                float:left;
+            }
+
+            #right_score {
+                color:blue;
+                float:right;
+            }  
+            
+            #seperator {
+                width: 1%;
+                float:left;
+                background-color: #000;
+            }
+        </style>
+
+        <script src='/views/libs/jquery-1.10.2.min.js'></script>
+        <script src='/socket.io/socket.io.js'></script>
+
+        <script>
+            var socket = io.connect('/');
+
+            $(function(){
+                var selector = '#cursor';
+
+                // /* BUILD VIEW */
+                var cursor = document.createElement('div');
+                cursor.id = "cursor";
+                $('body').append(cursor);
+
+                $('.score').css("line-height", document.height + "px");
+                $('.score').css("font-size", (document.height/3) + "px");
+                $('#reset').css("font-size", (document.height/15) + "px");
+                $('#seperator').css("height", document.height + "px");
+
+                /* LISTEN TO SOCKETS */
+                var x_offset = (document.width/2);
+                var y_offset = (document.height/2) - 24;
+                var x_sensitivity = 100;
+                var y_sensitivity = 20;
+
+                socket.on('update_orientationEvent', function(angle){
+                    //since alpha/yaw is not absolute - use compass to get absolute
+                    var new_x;
+                    if (angle.alpha > 180) {
+                      new_x = ((360 - angle.alpha) / 360) * 100;
+                    } else {
+                      new_x = (angle.alpha / 360 * -1) * 100;
+                    }
+                    $(selector).css('left', new_x * x_sensitivity + x_offset);
+
+                    $(selector).css('top', (angle.beta * y_sensitivity * -1) + y_offset);
+                    $(selector).css('-webkit-transform', 'rotateZ(' + angle.gamma + 'deg)');
+                });
+
+                var score = {left: 0, right: 0};
+
+                socket.on('touchEventHandler', function() {
+                    // get cursor's position
+                    var position = {
+                        left: $(selector).position().left * 100 / document.width,
+                        top: $(selector).position().top * 100 / document.height
+                    };
+
+                    console.log(position);
+
+                    // increment score as appropriate
+                    if (position.left > 50) {
+                        //right
+                        if (position.top > 50) {
+                            //bottom
+                            score.right--;
+                        } else if (position.top < 40) {
+                            //top
+                            score.right++;
+                        }
+                    } else if (position.left <40) {
+                        //left
+                        if (position.top > 50) {
+                            //bottom
+                            score.left--;
+                        } else if (position.top < 40) {
+                            //top
+                            score.left++;
+                        }
+                    }
+                    
+                    //update view
+                    $("#left_score").text(score.left);
+                    $("#right_score").text(score.right);
+                });
+            });
+        </script>
+
+    </head>
+
+    <body>
+        <div id="left_score" class="score">0</div>
+        <div id="seperator">|</div>
+        <div id="right_score" class="score">0</div>
+    </body>
+</html>

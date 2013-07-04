@@ -1,0 +1,61 @@
+<html>
+    <head>
+        <title>Digital Scoreboard | Controls</title>
+
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        
+        <style>
+            body {
+                -webkit-user-select: none;
+                background-color: #FFF;
+            }
+        </style>
+
+        <script src='/views/libs/jquery-1.10.2.min.js'></script>
+        <script src='/socket.io/socket.io.js'></script>
+
+        <script>
+            var socket = io.connect('/');
+
+            $(function(){
+
+	            /* DEFINE FUNCTIONS */
+	            function onTouchStart() {
+	                socket.emit('touchEvent');
+	            }
+
+            	var original_angle, steadying = 0, ready = 5;
+
+                function deviceOrientationHandler(orientation){
+                    if (steadying<ready) {steadying++;original_angle=orientation;return;}
+
+                    var roundTo = 100;
+                    var orientationEvent = {
+                        "alpha": Math.round(orientation.alpha*roundTo)/roundTo, //yaw - not absolute
+                        "beta": Math.round((orientation.beta-original_angle.beta)*roundTo)/roundTo,   //pitch - absolute
+                        "gamma": Math.round((orientation.gamma-original_angle.gamma)*roundTo)/roundTo, //roll - absolute
+                        "webkitCompassAccuracy": Math.round(orientation.webkitCompassAccuracy*roundTo)/roundTo, 
+                        "webkitCompassHeading": Math.round(orientation.webkitCompassHeading*roundTo)/roundTo
+                    } 
+
+                    socket.emit('orientationEvent', orientationEvent);
+                };
+
+                if (window.DeviceOrientationEvent) {
+                    // Listen for the deviceorientation event and handle DeviceOrientationEvent object
+                    window.addEventListener('deviceorientation', deviceOrientationHandler, false);
+                } else if (window.OrientationEvent) {
+                    // Listen for the MozOrientation event and handle OrientationData object
+                    window.addEventListener('MozOrientation', deviceOrientationHandler, false);
+                }
+
+                // listen for touch events
+	            window.addEventListener('touchstart', onTouchStart, false);
+            });
+        </script>
+
+    </head>
+
+    <body></body>
+</html>
